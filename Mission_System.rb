@@ -335,66 +335,51 @@ def unlock_mission(id)
     end
   end
   
-  def show_mission_complete(mission)
+def show_mission_complete(mission)
     viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
     viewport.z = 99999
     
-    # Select background based on faction
+    # Loads "mission_complete_asterisk.png" or "mission_complete_rebel.png"
     bg_filename = case mission.faction
       when :asterisk then "mission_complete_asterisk"
-      when :rebel then "mission_complete_rebel"
+      when :rebel    then "mission_complete_rebel"
       else "mission_complete_neutral"
     end
     
     bg = Sprite.new(viewport)
-    bg.bitmap = load_mission_graphic(bg_filename, 480, 120, get_faction_complete_color(mission.faction))
+    bg.bitmap = pbResolveBitmap("Graphics/Pictures/#{bg_filename}") ? Bitmap.new("Graphics/Pictures/#{bg_filename}") : Bitmap.new(480, 42)
     bg.x = (Graphics.width - bg.bitmap.width) / 2
-    bg.y = -bg.bitmap.height
-    
-    text = Sprite.new(viewport)
-    text.bitmap = Bitmap.new(bg.bitmap.width - 40, 90)
-    text.bitmap.font.name = "Arial"
-    text.bitmap.font.size = 24
-    text.bitmap.font.bold = true
-    text.bitmap.font.color = Color.new(255, 255, 255)
-    text.x = bg.x + 20
-    text.y = -bg.bitmap.height + 15
-    
-    # Different header for rebel missions
-    header = mission.rebel? ? "MISSION SUCCESS" : "MISSION COMPLETE"
-    text.bitmap.draw_text(0, 0, text.bitmap.width, 30, header, 1)
-    text.bitmap.font.size = 18
-    text.bitmap.font.bold = false
-    text.bitmap.draw_text(0, 34, text.bitmap.width, 24, mission.name, 1)
-    
-    # Reputation display
-    text.bitmap.font.size = 16
-    if mission.reputation_reward > 0
-      text.bitmap.font.color = Color.new(100, 255, 100)  # Green
-      text.bitmap.draw_text(0, 62, text.bitmap.width, 20, "Reputation +#{mission.reputation_reward}", 1)
-    elsif mission.reputation_reward < 0
-      text.bitmap.font.color = Color.new(255, 100, 100)  # Red
-      text.bitmap.draw_text(0, 62, text.bitmap.width, 20, "UCWD Reputation #{mission.reputation_reward}", 1)
-    end
+    img_height = bg.bitmap.height
+    bg.y = -img_height 
     
     pbMEPlay("Evolution success")
-    target_y = 20
-    20.times do
-      bg.y = lerp(bg.y, target_y, 0.25)
-      text.y = bg.y + 15
+    target_y = 0 
+    frames = 12
+    
+    # Slide Down
+    for i in 1..frames
+      bg.y = -img_height + ((img_height + target_y) * i / frames)
       Graphics.update
+      Input.update
+    end
+    bg.y = target_y 
+    
+    # Wait Loop (C-Key Interrupt)
+    240.times do
+      Graphics.update
+      Input.update
+      break if Input.trigger?(Input::USE) || Input.trigger?(Input::BACK)
     end
     
-    pbWait(100)
-    
-    20.times do
-      bg.y -= 6
-      text.y -= 6
+    # Slide Up
+    exit_distance = img_height + target_y + 10
+    for i in 1..frames
+      bg.y = target_y - (exit_distance * i / frames)
       Graphics.update
+      Input.update
     end
     
     bg.dispose
-    text.dispose
     viewport.dispose
   end
   
@@ -449,47 +434,51 @@ def unlock_mission(id)
     viewport.dispose
   end
   
-  def show_mission_complete(mission)
+def show_mission_complete(mission)
     viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
     viewport.z = 99999
     
-    bg = Sprite.new(viewport)
-    bg.bitmap = Bitmap.new(Graphics.width, 100)
-    bg.bitmap.fill_rect(0, 0, Graphics.width, 100, Color.new(0, 100, 0, 220))
-    bg.y = -100
-    
-    text = Sprite.new(viewport)
-    text.bitmap = Bitmap.new(Graphics.width - 40, 80)
-    text.bitmap.font.name = "Arial"
-    text.bitmap.font.size = 28
-    text.bitmap.font.bold = true
-    text.x = 20
-    text.y = -100
-    
-    text.bitmap.draw_text(0, 0, text.bitmap.width, 35, "MISSION COMPLETE", 1)
-    text.bitmap.font.size = 20
-    text.bitmap.font.bold = false
-    text.bitmap.draw_text(0, 35, text.bitmap.width, 25, mission.name, 1)
-    text.bitmap.font.size = 18
-    text.bitmap.draw_text(0, 60, text.bitmap.width, 20, "Reputation +#{mission.reputation_reward}", 1)
-    
-    pbMEPlay("Evolution success")
-    20.times do
-      bg.y += 5
-      text.y += 5
-      Graphics.update
+    # Loads "mission_complete_asterisk.png" or "mission_complete_rebel.png"
+    bg_filename = case mission.faction
+      when :asterisk then "mission_complete_asterisk"
+      when :rebel    then "mission_complete_rebel"
+      else "mission_complete_neutral"
     end
     
-    pbWait(100)
+    bg = Sprite.new(viewport)
+    bg.bitmap = pbResolveBitmap("Graphics/Pictures/#{bg_filename}") ? Bitmap.new("Graphics/Pictures/#{bg_filename}") : Bitmap.new(480, 42)
+    bg.x = (Graphics.width - bg.bitmap.width) / 2
+    img_height = bg.bitmap.height
+    bg.y = -img_height 
     
-    20.times do
-      bg.y -= 5
-      text.y -= 5
+    pbMEPlay("Evolution success")
+    target_y = 0 
+    frames = 12
+    
+    # Slide Down
+    for i in 1..frames
+      bg.y = -img_height + ((img_height + target_y) * i / frames)
       Graphics.update
+      Input.update
+    end
+    bg.y = target_y 
+    
+    # Wait Loop (C-Key Interrupt)
+    240.times do
+      Graphics.update
+      Input.update
+      break if Input.trigger?(Input::USE) || Input.trigger?(Input::BACK)
+    end
+    
+    # Slide Up
+    exit_distance = img_height + target_y + 10
+    for i in 1..frames
+      bg.y = target_y - (exit_distance * i / frames)
+      Graphics.update
+      Input.update
     end
     
     bg.dispose
-    text.dispose
     viewport.dispose
   end
   
@@ -611,6 +600,7 @@ end
 
 def pbMissionManager
   $mission_manager = MissionManager.new if !$mission_manager
+  $reputation = 100 if !$reputation
   return $mission_manager
 end
 

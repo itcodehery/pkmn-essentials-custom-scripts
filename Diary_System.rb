@@ -9,12 +9,17 @@ class Diary
     @entries = []
   end
   
-  # Add a new diary entry silently
+  # Add a new diary entry silently with a futuristic date
   def add_entry(title, text)
+    # Get the current time and advance it by 100 years
+    future_year = pbGetTimeNow.year + 100
+    # Format the date manually to use the futuristic year
+    futuristic_date = pbGetTimeNow.strftime("%B %d, ") + future_year.to_s
+    
     @entries.push({
       :title => title,
-      :text => text,
-      :date => pbGetTimeNow.strftime("%B %d, %Y")
+      :text  => text,
+      :date  => futuristic_date
     })
   end
   

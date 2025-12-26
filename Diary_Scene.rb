@@ -11,6 +11,9 @@ class DiaryScene
     @scrollY = 0
     @maxScroll = 0
     
+    @fontName = "Power Red and Green" # Ensure this font is in your Fonts folder
+    @fontSize = 24                    # Adjusted for GBA readability
+    
     # Power Red and Green Colors
     @baseColor = Color.new(80, 80, 88)      # Dark gray/black
     @shadowColor = Color.new(160, 160, 168) # Light gray shadow
@@ -29,9 +32,24 @@ class DiaryScene
       @sprites["background"].bitmap.fill_rect(0, 0, Graphics.width, Graphics.height, Color.new(248, 248, 248))
     end
     
-    @sprites["overlay"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport)
+    # --- CLIPPING WINDOW SETUP ---
+    # This defines the "inner box" where text is allowed to be seen.
+    @viewX = 40
+    @viewY = 40
+    @viewWidth = Graphics.width - 80
+    @viewHeight = Graphics.height - 110 # Limits height to stop before hints
+    
+    # The overlay is now only the size of the text area to provide clipping
+    @sprites["overlay"] = BitmapSprite.new(@viewWidth, @viewHeight, @viewport)
+    @sprites["overlay"].x = @viewX
+    @sprites["overlay"].y = @viewY
     @overlay = @sprites["overlay"].bitmap
     
+    # APPLY FONT TO OVERLAY
+    @overlay.font.name = @fontName
+    @overlay.font.size = @fontSize
+    
+    # Non-scrolling elements (Page numbers and Button hints)
     @sprites["pagenum"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport)
     @sprites["hints"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport)
     
@@ -48,43 +66,41 @@ class DiaryScene
     
     entry = @entries[@currentPage]
     
-    # UI Layout Constants
-    titleY = 40
-    dateY = 75
-    textStartY = 120
-    textX = 40
-    textWidth = Graphics.width - 80
-    maxVisibleHeight = Graphics.height - 180
+    # UI Layout Constants - Relative to the @viewWidth/@viewHeight box
+    titleY = 0
+    dateY = 35
+    textStartY = 85
     lineHeight = 32
     
-    # 1. Draw Static Elements (Title & Date)
-    # These move with @scrollY so they scroll away
-    pbDrawTextPositions(@sprites["pagenum"].bitmap, [
-      [entry[:title], textX, titleY - @scrollY, 0, @baseColor, @shadowColor],
-      [entry[:date], textX, dateY - @scrollY, 0, @baseColor, @shadowColor]
+    # 1. Draw Static Elements (Title & Date) inside the clipped area
+    pbDrawTextPositions(@overlay, [
+      [entry[:title], 0, titleY - @scrollY, 0, @baseColor, @shadowColor],
+      [entry[:date], 0, dateY - @scrollY, 0, @baseColor, @shadowColor]
     ])
     
     # 2. Wrap and Draw Content
-    # Use a dummy bitmap to calculate height
     tempBitmap = Bitmap.new(32, 32)
-    wrappedText = wrapText(tempBitmap, entry[:text], textWidth)
+    wrappedText = wrapText(tempBitmap, entry[:text], @viewWidth)
     tempBitmap.dispose
     
     textHeight = wrappedText.length * lineHeight
-    @maxScroll = [0, (textStartY + textHeight) - (Graphics.height - 60)].max
+    # Max scroll is calculated based on how much the content exceeds the window
+    @maxScroll = [0, (textStartY + textHeight) - @viewHeight].max
     
     currentY = textStartY - @scrollY
     wrappedText.each do |line|
-      # Only draw if within screen bounds for performance
-      if currentY > -lineHeight && currentY < Graphics.height
+      # Only draw if the line is currently visible within the clipping box
+      if currentY > -lineHeight && currentY < @viewHeight
         pbDrawTextPositions(@overlay, [
-          [line, textX, currentY, 0, @baseColor, @shadowColor]
+          [line, 0, currentY, 0, @baseColor, @shadowColor]
         ])
       end
       currentY += lineHeight
     end
     
-    # 3. Draw Page Counter (Static on screen)
+    # 3. Draw Page Counter (Drawn on pagenum sprite so it never scrolls or clips)
+    @sprites["pagenum"].bitmap.font.name = @fontName
+    @sprites["pagenum"].bitmap.font.size = @fontSize
     pageText = "Entry #{@currentPage + 1} / #{@entries.length}"
     pbDrawTextPositions(@sprites["pagenum"].bitmap, [
       [pageText, Graphics.width - 40, Graphics.height - 45, 1, @baseColor, @shadowColor]
@@ -93,6 +109,8 @@ class DiaryScene
   
   def pbDrawHints
     @sprites["hints"].bitmap.clear
+    @sprites["hints"].bitmap.font.name = @fontName
+    @sprites["hints"].bitmap.font.size = @fontSize
     hintY = Graphics.height - 45
     
     if @entries.length > 1
@@ -112,7 +130,7 @@ class DiaryScene
   def pbUpdate
     pbUpdateSpriteHash(@sprites)
     
-    # Page Navigation (Trigger)
+    # Page Navigation
     if Input.trigger?(Input::RIGHT) && @currentPage < @entries.length - 1
       @currentPage += 1
       @scrollY = 0
@@ -125,7 +143,7 @@ class DiaryScene
       pbPlayCursorSE
       pbDrawPage
       pbDrawHints
-    # Scrolling (Repeat for smoothness)
+    # Scrolling
     elsif Input.repeat?(Input::DOWN) && @scrollY < @maxScroll
       @scrollY += 12
       @scrollY = @maxScroll if @scrollY > @maxScroll
@@ -174,7 +192,7 @@ class DiaryScene
 end
 
 #===============================================================================
-# Diary Screen - Main Interface
+# Diary Screen - Main Interface Wrapper
 #===============================================================================
 
 class DiaryScreen
@@ -187,7 +205,6 @@ class DiaryScreen
     loop do
       Graphics.update
       Input.update
-      @scene.pbUpdate
       break unless @scene.pbUpdate
     end
     @scene.pbEndScene
@@ -195,7 +212,7 @@ class DiaryScreen
 end
 
 #===============================================================================
-# Access Function (replaces the old pbAccessDiary)
+# Global Access Function
 #===============================================================================
 
 def pbAccessDiary
